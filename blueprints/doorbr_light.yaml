@@ -1,0 +1,86 @@
+blueprint:
+  name: Door-brightness-light
+  description: Door and brightness state activated light
+  domain: automation
+  input:
+    door:
+      name: Door sensor
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: door
+    lumi:
+      name: Illuminance sensor
+      selector:
+        entity:
+          domain: sensor
+          device_class: illuminance
+    light_target:
+      name: Light
+      selector:
+        target:
+          entity:
+            domain: light
+    autooff:
+      name: Auto-off time
+      default: 5
+      selector:
+        number:
+          min: 1.0
+          max: 15.0
+          mode: slider
+          step: 1.0
+          unit_of_measurement: 'min'
+    max_lumi:
+      name: Maximum illiminance
+      default: 100
+      selector:
+        number:
+          min: 1.0
+          max: 300.0
+          mode: slider
+          step: 1.0
+          unit_of_measurement: 'lx'
+
+trigger:
+  - platform: state
+    entity_id: !input door
+    id: door
+  - platform: state
+    entity_id: !input door
+    to: "on"
+    for:
+      hours: 0
+      minutes: !input autooff
+      seconds: 0
+    id: wait
+
+action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: wait
+      sequence:
+      - service: light.turn_off
+        target: !input light_target
+    - conditions:
+      - condition: trigger
+        id: door
+      sequence:
+      - alias: "Toggle light"
+        if:
+          condition: and
+          conditions:
+            - condition: state
+              entity_id: !input door
+              state: 'on'
+            - condition: numeric_state
+              entity_id: !input lumi 
+              below: !input max_lumi
+        then:
+          service: light.turn_on
+          target: !input light_target
+        else:
+          service: light.turn_off
+          target: !input light_target
+mode: single
